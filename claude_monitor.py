@@ -68,18 +68,32 @@ def format_time(minutes):
     return f"{hours}h {mins}m"
 
 
-def create_token_progress_bar(percentage, width=50):
-    """Create a token usage progress bar with bracket style."""
+def create_token_progress_bar(percentage, target_percentage=35, width=50):
+    """Create a token usage progress bar with bracket style and target marker."""
     filled = int(width * percentage / 100)
-    green_bar = "█" * filled
-    red_bar = "░" * (width - filled)
+    target_position = int(width * target_percentage / 100)
     
+    # Build the bar with target marker
+    bar_chars = []
+    for i in range(width):
+        if i < filled:
+            bar_chars.append("█")
+        elif i == target_position:
+            bar_chars.append("│")  # Target marker
+        else:
+            bar_chars.append("░")
+    
+    bar_string = "".join(bar_chars)
+    
+    # Apply color based on percentage
     if percentage >= 90:
-        return f"🟢 [[cost.high]{green_bar}[cost.medium]{red_bar}[/]] {percentage:.1f}%"
+        colored_bar = f"[cost.high]{bar_string[:filled]}[cost.medium]{bar_string[filled:]}[/]"
     elif percentage >= 50:
-        return f"🟢 [[cost.medium]{green_bar}[/][table.border]{red_bar}[/]] {percentage:.1f}%"
+        colored_bar = f"[cost.medium]{bar_string[:filled]}[/][table.border]{bar_string[filled:]}[/]"
     else:
-        return f"🟢 [[cost.low]{green_bar}[/][table.border]{red_bar}[/]] {percentage:.1f}%"
+        colored_bar = f"[cost.low]{bar_string[:filled]}[/][table.border]{bar_string[filled:]}[/]"
+    
+    return f"🟢 [{colored_bar}] {percentage:.1f}% (target: {target_percentage}%)"
 
 
 def create_time_progress_bar(elapsed_minutes, total_minutes, width=50):
@@ -224,9 +238,9 @@ def parse_args():
     parser.add_argument(
         "--plan",
         type=str,
-        default="pro",
+        default="max20",
         choices=["pro", "max5", "max20", "custom_max"],
-        help='Claude plan type (default: pro). Use "custom_max" to auto-detect from highest previous block',
+        help='Claude plan type (default: max20). Use "custom_max" to auto-detect from highest previous block',
     )
     parser.add_argument(
         "--reset-hour", type=int, help="Change the reset hour (0-23) for daily limits"
@@ -247,6 +261,12 @@ def parse_args():
         "--theme-debug",
         action="store_true",
         help="Show theme detection debug information and exit"
+    )
+    parser.add_argument(
+        "--target",
+        type=int,
+        default=35,
+        help="Target percentage for token usage (default: 35). Shows time remaining to reach this target.",
     )
     return parser.parse_args()
 
@@ -402,7 +422,7 @@ def main():
             if not active_block:
                 screen_buffer.extend(print_header())
                 screen_buffer.append(
-                    "📊 [value]Token Usage:[/]    🟢 [[cost.low]" + "░" * 50 + "[/]] 0.0%"
+                    f"📊 [value]Token Usage:[/]    {create_token_progress_bar(0.0, args.target)}"
                 )
                 screen_buffer.append("")
                 screen_buffer.append(
@@ -500,10 +520,22 @@ def main():
 
             # Token Usage section
             screen_buffer.append(
-                f"📊 [value]Token Usage:[/]    {create_token_progress_bar(usage_percentage)}"
+                f"📊 [value]Token Usage:[/]    {create_token_progress_bar(usage_percentage, args.target)}"
             )
             screen_buffer.append("")
 
+            # Calculate time to target for the label
+            target_tokens = token_limit * args.target / 100
+            if burn_rate > 0 and tokens_used < target_tokens:
+                tokens_to_target = target_tokens - tokens_used
+                minutes_to_target = tokens_to_target / burn_rate
+                time_to_target_str = format_time(minutes_to_target)
+                time_label = f"Time to Reset / {args.target}% in {time_to_target_str}"
+            elif tokens_used >= target_tokens:
+                time_label = f"Time to Reset / {args.target}% exceeded"
+            else:
+                time_label = "Time to Reset"
+            
             # Time to Reset section - calculate progress based on actual session duration
             if start_time_str and end_time_str:
                 # Calculate actual session duration and elapsed time
@@ -516,7 +548,7 @@ def main():
                 elapsed_session_minutes = max(0, 300 - minutes_to_reset)
             
             screen_buffer.append(
-                f"⏳ [value]Time to Reset:[/]  {create_time_progress_bar(elapsed_session_minutes, total_session_minutes)}"
+                f"⏳ [value]{time_label}:[/]  {create_time_progress_bar(elapsed_session_minutes, total_session_minutes)}"
             )
             screen_buffer.append("")
 
@@ -527,6 +559,25 @@ def main():
             screen_buffer.append(
                 f"🔥 [value]Burn Rate:[/]      [warning]{burn_rate:.1f}[/] [dim]tokens/min[/]"
             )
+            
+            # Calculate time to target percentage
+            target_tokens = token_limit * args.target / 100
+            if burn_rate > 0 and tokens_used < target_tokens:
+                tokens_to_target = target_tokens - tokens_used
+                minutes_to_target = tokens_to_target / burn_rate
+                time_to_target = format_time(minutes_to_target)
+                screen_buffer.append(
+                    f"🎯 [value]Time to {args.target}%:[/] [warning]{time_to_target}[/]"
+                )
+            elif tokens_used >= target_tokens:
+                screen_buffer.append(
+                    f"🎯 [value]Time to {args.target}%:[/] [cost.high]Already exceeded![/]"
+                )
+            else:
+                screen_buffer.append(
+                    f"🎯 [value]Time to {args.target}%:[/] [dim]--[/]"
+                )
+            
             screen_buffer.append("")
 
             # Predictions - convert to configured timezone for display

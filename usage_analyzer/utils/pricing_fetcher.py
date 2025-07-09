@@ -8,6 +8,7 @@ from typing import Optional, Dict, Any
 
 try:
     import litellm
+    litellm.suppress_debug_info = True
     LITELLM_AVAILABLE = True
 except ImportError:
     LITELLM_AVAILABLE = False
