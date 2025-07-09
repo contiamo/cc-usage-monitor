@@ -93,7 +93,7 @@ def create_token_progress_bar(percentage, target_percentage=35, width=50):
     else:
         colored_bar = f"[cost.low]{bar_string[:filled]}[/][table.border]{bar_string[filled:]}[/]"
     
-    return f"🟢 [{colored_bar}] {percentage:.1f}% (target: {target_percentage}%)"
+    return f"🟢 [{colored_bar}] {percentage:.1f}% (Opus target: {target_percentage}%)"
 
 
 def create_time_progress_bar(elapsed_minutes, total_minutes, width=50):
@@ -266,7 +266,7 @@ def parse_args():
         "--target",
         type=int,
         default=35,
-        help="Target percentage for token usage (default: 35). Shows time remaining to reach this target.",
+        help="Target percentage for Opus token allotment (default: 35). Shows time remaining until this percentage of Opus tokens is consumed.",
     )
     return parser.parse_args()
 
@@ -530,9 +530,9 @@ def main():
                 tokens_to_target = target_tokens - tokens_used
                 minutes_to_target = tokens_to_target / burn_rate
                 time_to_target_str = format_time(minutes_to_target)
-                time_label = f"Time to Reset / {args.target}% in {time_to_target_str}"
+                time_label = f"Time to Reset / Opus {args.target}% in {time_to_target_str}"
             elif tokens_used >= target_tokens:
-                time_label = f"Time to Reset / {args.target}% exceeded"
+                time_label = f"Time to Reset / Opus {args.target}% exceeded"
             else:
                 time_label = "Time to Reset"
             
@@ -567,15 +567,15 @@ def main():
                 minutes_to_target = tokens_to_target / burn_rate
                 time_to_target = format_time(minutes_to_target)
                 screen_buffer.append(
-                    f"🎯 [value]Time to {args.target}%:[/] [warning]{time_to_target}[/]"
+                    f"🎯 [value]Time to Opus {args.target}%:[/]  [warning]{time_to_target}[/]"
                 )
             elif tokens_used >= target_tokens:
                 screen_buffer.append(
-                    f"🎯 [value]Time to {args.target}%:[/] [cost.high]Already exceeded![/]"
+                    f"🎯 [value]Time to Opus {args.target}%:[/]  [cost.high]Already exceeded![/]"
                 )
             else:
                 screen_buffer.append(
-                    f"🎯 [value]Time to {args.target}%:[/] [dim]--[/]"
+                    f"🎯 [value]Time to Opus {args.target}%:[/]  [dim]--[/]"
                 )
             
             screen_buffer.append("")

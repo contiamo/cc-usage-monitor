@@ -1,0 +1,41 @@
+version: '3'
+
+tasks:
+  run:
+    desc: Run the Claude usage monitor
+    cmds:
+      - python claude_monitor.py {{.CLI_ARGS}}
+
+  install:
+    desc: Install dependencies
+    cmds:
+      - pip install -e .
+
+  install-dev:
+    desc: Install development dependencies
+    cmds:
+      - pip install -e ".[dev]"
+
+  lint:
+    desc: Run linting with ruff
+    cmds:
+      - ruff check .
+
+  format:
+    desc: Format code with ruff
+    cmds:
+      - ruff format .
+
+  build:
+    desc: Build the package
+    cmds:
+      - python -m build
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - rm -rf build/
+      - rm -rf dist/
+      - rm -rf *.egg-info
+      - find . -type d -name __pycache__ -exec rm -rf {} +
+      - find . -type f -name "*.pyc" -delete
