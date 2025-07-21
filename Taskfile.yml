@@ -1,11 +1,11 @@
-version: '3'
+version: "3"
 
 tasks:
   run:
     desc: Run the Claude usage monitor
     dir: src
     cmds:
-      - python -m claude_monitor
+      - uv run --frozen python -m claude_monitor
 
   update:
     desc: Update repository from upstream
